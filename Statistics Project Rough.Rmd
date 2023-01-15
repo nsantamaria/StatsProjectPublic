@@ -1,0 +1,143 @@
+---
+title: "Tobacco Tomfoolery"
+output: html_document
+date: "2022-12-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+consumption_data <- read.csv("/Users/niks/Downloads/Adult_Tobacco_Consumption_In_The_U.S.__2000-Present.csv")
+
+library("gganimate")
+library("ggplot2")
+library(dplyr)
+
+```
+
+There are 0 values for some of the per.capita columns, here I try to fix. Plus the numbers are characters? So I remove commas and convert to numeric
+```{r}
+consumption_data$Total.Per.Capita <- as.numeric(gsub(",", "", consumption_data$Total)) / as.numeric(gsub(",", "",consumption_data$Population))
+
+consumption_data$Domestic.Per.Capita <- as.numeric(gsub(",", "", consumption_data$Domestic)) / as.numeric(gsub(",", "",consumption_data$Population))
+
+consumption_data$Imports.Per.Capita <- as.numeric(gsub(",", "", consumption_data$Imports)) / as.numeric(gsub(",", "",consumption_data$Population))
+
+```
+
+Create some subgroups
+```{r}
+
+cigar <- filter(consumption_data, Measure=="Cigars")
+
+smokeless <- filter(consumption_data, Measure=="Smokeless Tobacco")
+cigarettes <- filter(consumption_data, Measure=="Smokeless Tobacco")
+
+```
+
+```{r}
+p <- ggplot(cigar, aes(x=Submeasure, y=as.numeric(Total.Per.Capita))) +
+  geom_bar(stat="identity")+
+  labs(title = 'Year: {frame_time}')+
+  transition_time(Year)
+
+animate(p, renderer = gifski_renderer())
+
+
+```
+
+```{r}
+library("ggpubr")
+
+library(cowplot)
+
+ggplot(cigar, aes(x=Year, y=as.numeric(Total.Per.Capita), color=Submeasure)) +
+  geom_point(stat="identity") +
+  geom_line(aes(x=2009), color="grey")
+
+
+a<- ggplot() +
+  geom_point(data=cigar, aes(x=Year, y=as.numeric(Imports.Per.Capita), color=Submeasure))
+
+b<- ggplot() +
+geom_point(data=cigar, aes(x=Year, y=as.numeric(Domestic.Per.Capita), color=Submeasure))
+
+c<- ggplot() +
+geom_point(data=cigar, aes(x=Year, y=as.numeric(Total.Per.Capita), color=Submeasure))
+
+ggarrange(a,b,c,ncol=1, nrow=3,labels=c("Imports", "Domestic", "Totals"))
+
+```
+
+
+https://www.cigaraficionado.com/article/schip-hits-little-cigars-hard-3396
+
+
+
+
+
+
+```{r cigarettes}
+
+ggplot(data=filter(consumption_data, Data.Value.Unit=="Cigarettes" , Measure != "All"), aes(Year, Total.Per.Capita, color=Measure))+
+  geom_point() +
+  geom_smooth(method="lm")
+
+
+```
+
+
+
+```{r smokeless animation}
+
+p <- ggplot(smokeless, aes(x=Submeasure, y=as.numeric(Total.Per.Capita))) +
+  geom_bar(stat="identity")+
+  labs(title = 'Year: {frame_time}')+
+  transition_time(Year)
+
+animate(p, renderer = gifski_renderer())
+
+```
+
+```{r}
+smokeless <- filter(consumption_data, Measure=="Smokeless Tobacco")
+
+
+averages <-   (smokeless$Total.Per.Capita[smokeless$Submeasure=="Chewing Tobacco"]+ smokeless$Total.Per.Capita[smokeless$Submeasure=="Snuff"])
+
+
+smokeless_totals <- data.frame(Year = unique(smokeless$Year), Total.Per.Capita = averages, Submeasure = "Total")
+```
+
+```{r smokeless plot}
+
+library(ggpubr)
+library(dplyr)
+smokeless <- data.frame(Year = smokeless$Year, Total.Per.Capita = smokeless$Total.Per.Capita, Submeasure = smokeless$Submeasure)
+combined_smokeless <- rbind(smokeless, smokeless_totals)
+
+ggplot(data=combined_smokeless, aes(x=Year, y=Total.Per.Capita, color=Submeasure)) +  
+  geom_point(stat="identity") +
+  geom_smooth(method="lm") +
+  stat_cor(method="pearson") 
+
+
+ggplot(data=filter(smokeless, )))
+```
+
+
+
+
+
+```{r regression equations}
+snuffequation <-lm(Total.Per.Capita~Year, filter(combined_smokeless, Submeasure=="Snuff"))
+chewequation <- lm(Total.Per.Capita~Year, filter(combined_smokeless, Submeasure=="Chewing Tobacco"))
+avgequation <- lm(Total.Per.Capita~Year, filter(combined_smokeless, Submeasure=="Average"))
+snuffequation
+chewequation
+avgequation
+```
+
